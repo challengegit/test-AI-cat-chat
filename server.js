@@ -1,10 +1,10 @@
 // ----------------------------------------------------------------
-// 猫AIチャット バックエンドサーバー (最終解決版)
+// 猫AIチャット バックエンドサーバー (一体型・最終完成版)
 // ----------------------------------------------------------------
 
 // 必要なライブラリを読み込む
 const express = require('express');
-const cors = require('cors'); // corsライブラリ自体は使う
+// const cors = require('cors'); // もう使いません
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs').promises;
 const path = require('path');
@@ -13,15 +13,17 @@ require('dotenv').config();
 // Expressアプリを初期化
 const app = express();
 
+// ▼▼▼▼▼ ここからが重要な追加部分 ▼▼▼▼▼
 
-// ▼▼▼▼▼ ここを最終解決版のCORS設定に書き換える ▼▼▼▼▼
+// このディレクトリにある静的ファイル(CSS, JS, 画像など)を提供する設定
+app.use(express.static(__dirname));
 
-// どんなオリジンからのリクエストも許可する最もシンプルな設定
-// これで preflight request にも正しく応答できるようになる
-app.use(cors());
+// ルートURL('/')にアクセスが来たら、index.htmlを返す設定
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-// ▲▲▲▲▲ 書き換えここまで ▲▲▲▲▲
-
+// ▲▲▲▲▲ ここまで ▲▲▲▲▲
 
 app.use(express.json()); // JSONリクエストを扱えるようにする
 
