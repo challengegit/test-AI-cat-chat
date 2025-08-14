@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫とAIチャット</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- スマホ用 猫選択ヘッダー -->
+        <header id="cat-header-sp" class="cat-header-sp">
+            <p>チャットする猫を選んでね</p>
+            <div id="cat-list-sp" class="cat-list-sp">
+                <!-- ここにJSで猫のアイコンが挿入されます -->
+            </div>
+        </header>
+
+        <!-- PC用 猫紹介サイドバー -->
+        <aside id="cat-sidebar-pc" class="cat-sidebar-pc">
+            <h2>猫とAIチャット</h2>
+            <div id="cat-list-pc" class="cat-list-pc">
+                <!-- ここにJSで猫のリストが挿入されます -->
+            </div>
+        </aside>
+
+        <!-- メインチャット画面 -->
+        <main id="chat-container" class="chat-container">
+            <div id="chat-log" class="chat-log">
+                <div class="message system-message">猫を選んでチャットを開始してください。</div>
+            </div>
+            <footer class="chat-footer">
+                <form id="chat-form" class="chat-form">
+                    <input type="text" id="message-input" placeholder="メッセージを入力" autocomplete="off" disabled>
+                    <button type="submit" id="send-button" disabled>送信</button>
+                </form>
+            </footer>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
