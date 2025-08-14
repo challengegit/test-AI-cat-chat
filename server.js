@@ -13,24 +13,17 @@ require('dotenv').config(); // .envファイルから環境変数を読み込む
 // Expressアプリを初期化
 const app = express();
 
-// --- CORS設定をより堅牢にする ---
-const frontendPort = 5500; // フロントエンド(Live Server)が使用するポート
-const corsOptions = {
-  origin: (origin, callback) => {
-    // Codespaces環境のURLパターン (例: https://ユーザー名-codespace名-5500.app.github.dev)
-    const allowedOriginPattern = new RegExp(`^https?:\/\/[a-zA-Z0-9-]+\-${frontendPort}\.app\.github\.dev$`);
-    
-    // リクエスト元のオリジンが許可パターンに一致するか、
-    // またはオリジンが存在しない場合(同一オリジンやサーバーサイドからのリクエスト)に通信を許可する
-    if (!origin || allowedOriginPattern.test(origin) || origin.includes('localhost')) {
-      callback(null, true);
-    } else {
-      console.warn(`CORS Blocked: ${origin}`); // どのオリジンがブロックされたかログに出す
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-};
-app.use(cors(corsOptions)); // CORSを有効にする
+// ▼▼▼▼▼ CORS設定をシンプルで確実なものに変更 ▼▼▼▼▼
+const frontendPort = 5500; // Live Serverが使用するポート
+// Codespacesのホスト名からフロントエンドの完全なURLを構築
+const frontendOrigin = `https://${process.env.CODESPACE_NAME}-${frontendPort}.app.github.dev`;
+
+console.log(`フロントエンドのオリジンを許可します: ${frontendOrigin}`); // どのURLを許可するか確認用ログ
+
+app.use(cors({
+  origin: frontendOrigin
+}));
+// ▲▲▲▲▲ ここまで ▲▲▲▲▲
 
 app.use(express.json()); // JSONリクエストを扱えるようにする
 
