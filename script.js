@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- グローバル変数 ---
     let catsData = [];
     let selectedCat = null;
+    let conversationHistory = []; // 会話履歴を保持する配列
     const catFiles = ['teto.txt', 'pino.txt']; // 将来的に猫を増やす場合はここに追加
 
     // --- 初期化処理 ---
@@ -43,16 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const profilePart = parts[0];
         
         profilePart.split('\n').forEach(line => {
-            if (line.includes(':')) {
-                const [key, ...valueParts] = line.split(':');
+            const trimmedLine = line.trim();
+            if (trimmedLine.includes(':')) {
+                const [key, ...valueParts] = trimmedLine.split(':');
                 const value = valueParts.join(':').trim();
                 cat[key.trim()] = value;
             }
         });
-        
-        // AI用のプロンプトも保持しておく（Step 4以降で使用）
-        cat.aiProfile = parts[1] || '';
-        cat.aiTriggers = parts[2] || '';
         
         return cat;
     }
@@ -107,7 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // チャットを有効化
+        // チャットを有効化し、会話履歴をリセット
+        conversationHistory = [];
         enableChat();
         chatLog.innerHTML = `<div class="message system-message">${selectedCat.name}とのチャットを開始しました。</div>`;
     }
@@ -127,7 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (userMessage && selectedCat && !sendButton.disabled) {
             displayMessage(userMessage, 'user');
             messageInput.value = '';
-            getDummyAiReply(userMessage);
+            // 【重要】本物のAI応答関数を呼び出す
+            getAiReply(userMessage); 
         }
     });
 
@@ -155,30 +155,62 @@ document.addEventListener('DOMContentLoaded', () => {
         chatLog.scrollTop = chatLog.scrollHeight; // 自動で一番下にスクロール
     }
 
-    // --- 【ダミーAI応答】ここがStep4で本物のAIに置き換わる部分 ---
-    function getDummyAiReply(userMessage) {
+    // --- 【本物のAI応答】サーバーと通信する関数 ---
+    async function getAiReply(userMessage) {
         sendButton.disabled = true;
         
-        // ダミーのタイピング中表示
         const typingIndicator = document.createElement('div');
         typingIndicator.classList.add('message', 'ai-message', 'typing');
         typingIndicator.innerHTML = `<img src="${selectedCat.profileImage}" alt="avatar" class="avatar"><div class="message-content">...</div>`;
         chatLog.appendChild(typingIndicator);
         chatLog.scrollTop = chatLog.scrollHeight;
-        
-        setTimeout(() => {
-            chatLog.removeChild(typingIndicator); // タイピング中表示を削除
+
+        // サーバーのURL（ポート10000で動いているサーバーに接続）
+        const serverUrl = 'http://localhost:10000/chat';
+
+        try {
+            const requestData = {
+                catId: selectedCat.id,
+                question: userMessage,
+                history: conversationHistory 
+            };
             
-            // "箱"という単語が含まれていたら、特別な返信をするテスト
-            if (userMessage.includes('箱') && selectedCat.id === 'teto') {
-                 displayMessage('この箱にはいることにゃー', 'ai', 'images/teto_box.jpg');
-            } else {
-                const replyText = `${userMessage}にゃー`;
-                displayMessage(replyText, 'ai');
+            const response = await fetch(serverUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData),
+            });
+
+            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
+            const data = await response.json();
+            let aiReply = data.reply;
+            
+            // 会話履歴を更新
+            conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+            conversationHistory.push({ role: 'model', parts: [{ text: aiReply }] });
+
+            // [IMAGE:...] タグを正規表現で検索
+            const imageRegex = /\[IMAGE:\s*([^\]]+)\]/g;
+            const match = imageRegex.exec(aiReply);
+            let imageUrl = null;
+
+            if (match) {
+                // タグをテキストから削除し、画像パスを取得
+                aiReply = aiReply.replace(imageRegex, '').trim(); 
+                imageUrl = match[1].trim(); 
             }
+
+            displayMessage(aiReply, 'ai', imageUrl);
+
+        } catch (error) {
+            console.error('AIからの応答取得中にエラー:', error);
+            displayMessage('ごめんにゃ、ちょっと調子が悪いみたいだにゃん…', 'ai');
+        } finally {
+            chatLog.removeChild(typingIndicator);
             sendButton.disabled = false;
             messageInput.focus();
-        }, 1000); // 1秒後に返信
+        }
     }
 
     // --- 実行 ---
