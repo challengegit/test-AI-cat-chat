@@ -1,10 +1,10 @@
 // ----------------------------------------------------------------
-// 猫AIチャット バックエンドサーバー (デバッグログ付き)
+// 猫AIチャット バックエンドサーバー (最終解決版)
 // ----------------------------------------------------------------
 
 // 必要なライブラリを読み込む
 const express = require('express');
-const cors = require('cors');
+const cors = require('cors'); // corsライブラリ自体は使う
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs').promises;
 const path = require('path');
@@ -13,36 +13,17 @@ require('dotenv').config();
 // Expressアプリを初期化
 const app = express();
 
-// --- CORS設定（原因調査のためのデバッグログ付き） ---
-const frontendPort = 5500;
-const corsOptions = {
-  origin: (origin, callback) => {
-    // ★★★ここからデバッグログ★★★
-    console.log("--------------------------------");
-    console.log("CORSチェックを実行します。");
-    console.log("リクエスト元 (origin):", origin);
-    // ★★★ここまでデバッグログ★★★
 
-    const allowedOriginPattern = new RegExp(`^https?:\/\/[a-zA-Z0-9-]+\-${frontendPort}\.app\.github\.dev$`);
+// ▼▼▼▼▼ ここを最終解決版のCORS設定に書き換える ▼▼▼▼▼
 
-    if (!origin || allowedOriginPattern.test(origin)) {
-      // ★★★ここからデバッグログ★★★
-      console.log("結果: アクセスを許可します。");
-      console.log("--------------------------------");
-      // ★★★ここまでデバッグログ★★★
-      callback(null, true);
-    } else {
-      // ★★★ここからデバッグログ★★★
-      console.error("結果: アクセスをブロックしました。");
-      console.log("--------------------------------");
-      // ★★★ここまでデバッグログ★★★
-      callback(new Error('このオリジンはCORSポリシーで許可されていません。'));
-    }
-  }
-};
-app.use(cors(corsOptions));
+// どんなオリジンからのリクエストも許可する最もシンプルな設定
+// これで preflight request にも正しく応答できるようになる
+app.use(cors());
 
-app.use(express.json());
+// ▲▲▲▲▲ 書き換えここまで ▲▲▲▲▲
+
+
+app.use(express.json()); // JSONリクエストを扱えるようにする
 
 // --- APIキーのセットアップ ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
