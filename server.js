@@ -1,31 +1,48 @@
 // ----------------------------------------------------------------
-// 猫AIチャット バックエンドサーバー (最適化版)
+// 猫AIチャット バックエンドサーバー (デバッグログ付き)
 // ----------------------------------------------------------------
 
 // 必要なライブラリを読み込む
 const express = require('express');
-const cors = require('cors'); // フロントエンドとバックエンドの通信を許可するおまじない
+const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fs = require('fs').promises; // ファイルを非同期で読み込むためのモジュール
+const fs = require('fs').promises;
 const path = require('path');
-require('dotenv').config(); // .envファイルから環境変数を読み込む
+require('dotenv').config();
 
 // Expressアプリを初期化
 const app = express();
 
-// ▼▼▼▼▼ CORS設定をシンプルで確実なものに変更 ▼▼▼▼▼
-const frontendPort = 5500; // Live Serverが使用するポート
-// Codespacesのホスト名からフロントエンドの完全なURLを構築
-const frontendOrigin = `https://${process.env.CODESPACE_NAME}-${frontendPort}.app.github.dev`;
+// --- CORS設定（原因調査のためのデバッグログ付き） ---
+const frontendPort = 5500;
+const corsOptions = {
+  origin: (origin, callback) => {
+    // ★★★ここからデバッグログ★★★
+    console.log("--------------------------------");
+    console.log("CORSチェックを実行します。");
+    console.log("リクエスト元 (origin):", origin);
+    // ★★★ここまでデバッグログ★★★
 
-console.log(`フロントエンドのオリジンを許可します: ${frontendOrigin}`); // どのURLを許可するか確認用ログ
+    const allowedOriginPattern = new RegExp(`^https?:\/\/[a-zA-Z0-9-]+\-${frontendPort}\.app\.github\.dev$`);
 
-app.use(cors({
-  origin: frontendOrigin
-}));
-// ▲▲▲▲▲ ここまで ▲▲▲▲▲
+    if (!origin || allowedOriginPattern.test(origin)) {
+      // ★★★ここからデバッグログ★★★
+      console.log("結果: アクセスを許可します。");
+      console.log("--------------------------------");
+      // ★★★ここまでデバッグログ★★★
+      callback(null, true);
+    } else {
+      // ★★★ここからデバッグログ★★★
+      console.error("結果: アクセスをブロックしました。");
+      console.log("--------------------------------");
+      // ★★★ここまでデバッグログ★★★
+      callback(new Error('このオリジンはCORSポリシーで許可されていません。'));
+    }
+  }
+};
+app.use(cors(corsOptions));
 
-app.use(express.json()); // JSONリクエストを扱えるようにする
+app.use(express.json());
 
 // --- APIキーのセットアップ ---
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -53,13 +70,10 @@ app.post('/chat', async (req, res) => {
     const fullPrompt = `${systemPrompt}\n\nあなたは以上の設定に完璧になりきってください。\nさらに、以下のルールにも従ってください。\n${imageTriggerPrompt}\n\n以上の設定とルールに基づき、ユーザーからの以下の質問に答えてください。`;
     const chat = model.startChat({
       history: history || [],
-      generationConfig: {
-        maxOutputTokens: 1000,
-      },
+      generationConfig: { maxOutputTokens: 1000 },
     });
     const result = await chat.sendMessage(fullPrompt + "\n\n質問: " + question);
-    const response = result.response;
-    const aiReplyText = response.text();
+    const aiReplyText = result.response.text();
     res.json({ reply: aiReplyText });
   } catch (error) {
     console.error('チャット処理中にエラーが発生しました:', error);
