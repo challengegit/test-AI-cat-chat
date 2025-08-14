@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 猫データの読み込みと解析 ---
     async function loadAllCatData() {
         try {
-            const promises = catFiles.map(file => 
+            const promises = catFiles.map(file =>
                 fetch(`data/${file}`)
                     .then(response => {
                         if (!response.ok) throw new Error(`ファイルが見つかりません: ${file}`);
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cat = {};
         const parts = text.split('---');
         const profilePart = parts[0];
-        
+
         profilePart.split('\n').forEach(line => {
             const trimmedLine = line.trim();
             if (trimmedLine.includes(':')) {
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cat[key.trim()] = value;
             }
         });
-        
+
         return cat;
     }
 
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function selectCat(catId) {
         selectedCat = catsData.find(cat => cat.id === catId);
-        
+
         // UIの選択状態を更新
         document.querySelectorAll('.cat-icon-sp, .cat-item').forEach(item => {
             item.classList.remove('selected');
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
             displayMessage(userMessage, 'user');
             messageInput.value = '';
             // 【重要】本物のAI応答関数を呼び出す
-            getAiReply(userMessage); 
+            getAiReply(userMessage);
         }
     });
 
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messageHtml += `<img src="${imageUrl}" alt="チャット画像">`;
         }
         messageHtml += `</div>`;
-        
+
         messageWrapper.innerHTML = messageHtml;
         chatLog.appendChild(messageWrapper);
         chatLog.scrollTop = chatLog.scrollHeight; // 自動で一番下にスクロール
@@ -158,23 +158,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 【本物のAI応答】サーバーと通信する関数 ---
     async function getAiReply(userMessage) {
         sendButton.disabled = true;
-        
+
         const typingIndicator = document.createElement('div');
         typingIndicator.classList.add('message', 'ai-message', 'typing');
         typingIndicator.innerHTML = `<img src="${selectedCat.profileImage}" alt="avatar" class="avatar"><div class="message-content">...</div>`;
         chatLog.appendChild(typingIndicator);
         chatLog.scrollTop = chatLog.scrollHeight;
 
-        // サーバーのURL（ポート10000で動いているサーバーに接続）
-        const serverUrl = 'http://localhost:10000/chat';
+        // ▼▼▼▼▼ ここが修正された部分です ▼▼▼▼▼
+        // サーバーのURLを動的に生成する
+        const backendPort = 10000; // バックエンドサーバーのポート番号
+        const currentHost = window.location.hostname; // 現在のページのホスト名を取得
+        // ローカル環境(localhost)とCodespaces環境の両方に対応
+        const serverUrl = currentHost.includes('localhost')
+            ? `http://localhost:${backendPort}/chat`
+            : `https://${currentHost.replace(/-\d+/, `-${backendPort}`)}/chat`;
+        // ▲▲▲▲▲ 修正箇所ここまで ▲▲▲▲▲
 
         try {
             const requestData = {
                 catId: selectedCat.id,
                 question: userMessage,
-                history: conversationHistory 
+                history: conversationHistory
             };
-            
+
             const response = await fetch(serverUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -185,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             let aiReply = data.reply;
-            
+
             // 会話履歴を更新
             conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
             conversationHistory.push({ role: 'model', parts: [{ text: aiReply }] });
@@ -197,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (match) {
                 // タグをテキストから削除し、画像パスを取得
-                aiReply = aiReply.replace(imageRegex, '').trim(); 
-                imageUrl = match[1].trim(); 
+                aiReply = aiReply.replace(imageRegex, '').trim();
+                imageUrl = match[1].trim();
             }
 
             displayMessage(aiReply, 'ai', imageUrl);
