@@ -4,7 +4,6 @@
 
 // 必要なライブラリを読み込む
 const express = require('express');
-// const cors = require('cors'); // もう使いません
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs').promises;
 const path = require('path');
@@ -13,8 +12,6 @@ require('dotenv').config();
 // Expressアプリを初期化
 const app = express();
 
-// ▼▼▼▼▼ ここからが重要な追加部分 ▼▼▼▼▼
-
 // このディレクトリにある静的ファイル(CSS, JS, 画像など)を提供する設定
 app.use(express.static(__dirname));
 
@@ -22,8 +19,6 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
-
-// ▲▲▲▲▲ ここまで ▲▲▲▲▲
 
 app.use(express.json()); // JSONリクエストを扱えるようにする
 
@@ -37,6 +32,50 @@ if (!GEMINI_API_KEY) {
 // Google AIクライアントの初期化
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+// ▼▼▼▼▼ ここからが重要な追加部分 ▼▼▼▼▼
+
+// --- 猫リスト取得API ---
+// dataディレクトリ内の全.txtファイルを読み込み、基本情報をフロントエンドに返す
+app.get('/cats', async (req, res) => {
+  try {
+    const dataDir = path.join(__dirname, 'data');
+    const files = await fs.readdir(dataDir);
+    const catFiles = files.filter(file => file.endsWith('.txt'));
+
+    let catsData = [];
+    for (const file of catFiles) {
+      const filePath = path.join(dataDir, file);
+      const content = await fs.readFile(filePath, 'utf-8');
+      const profileInfo = {};
+      const lines = content.split('---')[0].split('\n');
+      lines.forEach(line => {
+        const [key, ...value] = line.split(':');
+        if (key && value.length > 0) {
+          profileInfo[key.trim()] = value.join(':').trim();
+        }
+      });
+      catsData.push({
+        id: profileInfo.id,
+        name: profileInfo.name,
+        profileImage: profileInfo.profileImage,
+        description: `${profileInfo.gender}, ${profileInfo.age}, ${profileInfo.birthplace}`
+      });
+    }
+
+    // 指定された順番に並び替える
+    const order = ['pino', 'teto', 'ruka', 'abi', 'bell', 'rate'];
+    catsData.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+
+    res.json(catsData);
+  } catch (error) {
+    console.error('猫リストの取得中にエラーが発生しました:', error);
+    res.status(500).json({ error: '猫の情報の取得に失敗しました。' });
+  }
+});
+
+// ▲▲▲▲▲ ここまで ▲▲▲▲▲
+
 
 // --- メインのチャット処理API ---
 app.post('/chat', async (req, res) => {

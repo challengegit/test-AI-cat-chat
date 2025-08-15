@@ -1,193 +1,221 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM要素の取得 ---
-    const catListSp = document.getElementById('cat-list-sp');
-    const catListPc = document.getElementById('cat-list-pc');
-    const chatLog = document.getElementById('chat-log');
-    const chatForm = document.getElementById('chat-form');
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
+// グローバル変数とDOM要素の取得
+const chatLog = document.getElementById('chat-log');
+const messageInput = document.getElementById('message-input');
+const sendButton = document.getElementById('send-button');
+const chatForm = document.getElementById('chat-form');
+const catListPC = document.getElementById('cat-list-pc');
+const catListSP = document.getElementById('cat-list-sp');
 
-    // --- グローバル変数 ---
-    let catsData = [];
-    let selectedCat = null;
-    let conversationHistory = [];
-    const catFiles = ['teto.txt', 'pino.txt'];
+let currentCatId = null;
+let chatHistory = [];
+let isWaitingForResponse = false;
 
-    // --- 初期化処理 ---
-    async function initialize() {
-        await loadAllCatData();
-        displayCatLists();
-        addCatSelectionListeners();
-    }
-
-    // --- 猫データの読み込みと解析 ---
-    async function loadAllCatData() {
-        try {
-            const promises = catFiles.map(file =>
-                fetch(`data/${file}`)
-                    .then(response => {
-                        if (!response.ok) throw new Error(`ファイルが見つかりません: ${file}`);
-                        return response.text();
-                    })
-                    .then(text => parseCatData(text))
-            );
-            catsData = await Promise.all(promises);
-        } catch (error) {
-            console.error('猫データの読み込みに失敗しました:', error);
-            alert('猫データの読み込みに失敗しました。ファイルパスやファイル名を確認してください。');
+/**
+ * ページの読み込みが完了したときに実行される初期化関数
+ */
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // サーバーから猫のリストを取得
+        const response = await fetch('/cats');
+        if (!response.ok) {
+            throw new Error('猫リストの取得に失敗しました。');
         }
+        const cats = await response.json();
+        // 猫リストを画面に表示
+        displayCatList(cats);
+    } catch (error) {
+        console.error(error);
+        addMessage('system', 'エラー: 猫の情報を読み込めませんでした。');
     }
 
-    function parseCatData(text) {
-        const cat = {};
-        const parts = text.split('---');
-        const profilePart = parts[0];
-        profilePart.split('\n').forEach(line => {
-            const trimmedLine = line.trim();
-            if (trimmedLine.includes(':')) {
-                const [key, ...valueParts] = trimmedLine.split(':');
-                const value = valueParts.join(':').trim();
-                cat[key.trim()] = value;
-            }
-        });
-        return cat;
-    }
+    // フォームの送信イベントを設定
+    chatForm.addEventListener('submit', handleFormSubmit);
+});
 
-    // --- 猫リストの表示 ---
-    function displayCatLists() {
-        catListSp.innerHTML = '';
-        catListPc.innerHTML = '';
-        catsData.forEach(cat => {
-            if (!cat.id || !cat.name) return;
-            const iconHtml = `
-                <div class="cat-icon-sp" data-id="${cat.id}">
-                    <img src="${cat.profileImage}" alt="${cat.name}">
-                    <span>${cat.name}</span>
-                </div>`;
-            catListSp.innerHTML += iconHtml;
-            const itemHtml = `
-                <div class="cat-item" data-id="${cat.id}">
-                    <img src="${cat.profileImage}" alt="${cat.name}">
-                    <div class="info">
-                        <div class="name">${cat.name}</div>
-                        <div class="details">${cat.gender}, ${cat.age}</div>
-                        <div class="details">${cat.birthplace}</div>
-                    </div>
-                </div>`;
-            catListPc.innerHTML += itemHtml;
-        });
-    }
+/**
+ * サーバーから取得した猫のリストを画面に表示する
+ * @param {Array} cats - 猫の情報オブジェクトの配列
+ */
+function displayCatList(cats) {
+    // リストをクリア
+    catListPC.innerHTML = '';
+    catListSP.innerHTML = '';
 
-    // --- 猫選択のイベントリスナー ---
-    function addCatSelectionListeners() {
-        document.querySelectorAll('.cat-icon-sp, .cat-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const catId = item.dataset.id;
-                selectCat(catId);
-            });
-        });
-    }
+    cats.forEach(cat => {
+        // PC用リストアイテムの作成
+        const catItemPC = document.createElement('div');
+        catItemPC.className = 'cat-item';
+        catItemPC.dataset.catId = cat.id;
+        catItemPC.innerHTML = `
+            <img src="${cat.profileImage}" alt="${cat.name}" class="cat-profile-img">
+            <div class="cat-info">
+                <p class="cat-name">${cat.name}</p>
+                <p class="cat-description">${cat.description}</p>
+            </div>
+        `;
+        catItemPC.addEventListener('click', () => selectCat(cat));
+        catListPC.appendChild(catItemPC);
 
-    function selectCat(catId) {
-        selectedCat = catsData.find(cat => cat.id === catId);
-        document.querySelectorAll('.cat-icon-sp, .cat-item').forEach(item => {
+        // SP用アイコンの作成
+        const catIconSP = document.createElement('img');
+        catIconSP.src = cat.profileImage;
+        catIconSP.alt = cat.name;
+        catIconSP.className = 'cat-icon-sp';
+        catIconSP.dataset.catId = cat.id;
+        catIconSP.addEventListener('click', () => selectCat(cat));
+        catListSP.appendChild(catIconSP);
+    });
+}
+
+/**
+ * 猫が選択されたときの処理
+ * @param {object} cat - 選択された猫の情報オブジェクト
+ */
+function selectCat(cat) {
+    currentCatId = cat.id;
+    chatHistory = []; // 新しい猫と話すときは履歴をリセット
+    isWaitingForResponse = false;
+
+    // チャットログをクリアして挨拶メッセージを表示
+    chatLog.innerHTML = '';
+    addMessage('system', `${cat.name}とのチャットを開始しました。`);
+
+    // 入力欄と送信ボタンを有効化
+    messageInput.disabled = false;
+    sendButton.disabled = false;
+    messageInput.placeholder = `${cat.name}へのメッセージを入力`;
+    messageInput.focus();
+
+    // 選択状態のスタイルを更新
+    updateSelectedCatStyle();
+}
+
+/**
+ * 選択された猫のUIスタイルを更新する
+ */
+function updateSelectedCatStyle() {
+    // PC用サイドバーのスタイル更新
+    document.querySelectorAll('.cat-item').forEach(item => {
+        if (item.dataset.catId === currentCatId) {
+            item.classList.add('selected');
+        } else {
             item.classList.remove('selected');
-            if (item.dataset.id === catId) {
-                item.classList.add('selected');
-            }
-        });
-        conversationHistory = [];
-        enableChat();
-        chatLog.innerHTML = `<div class="message system-message">${selectedCat.name}とのチャットを開始しました。</div>`;
-    }
-
-    // --- チャットの有効/無効化 ---
-    function enableChat() {
-        messageInput.disabled = false;
-        sendButton.disabled = false;
-        messageInput.placeholder = `${selectedCat.name}へのメッセージを入力`;
-        messageInput.focus();
-    }
-
-    // --- チャットフォームの送信処理 ---
-    chatForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const userMessage = messageInput.value.trim();
-        if (userMessage && selectedCat && !sendButton.disabled) {
-            displayMessage(userMessage, 'user');
-            messageInput.value = '';
-            getAiReply(userMessage);
         }
     });
 
-    // --- メッセージの表示 ---
-    function displayMessage(text, sender, imageUrl = null) {
-        const messageWrapper = document.createElement('div');
-        messageWrapper.classList.add('message', `${sender}-message`);
-        let messageHtml = '';
-        if (sender === 'ai') {
-            messageHtml += `<img src="${selectedCat.profileImage}" alt="${selectedCat.name}" class="avatar">`;
+    // SP用ヘッダーのスタイル更新
+    document.querySelectorAll('.cat-icon-sp').forEach(icon => {
+        if (icon.dataset.catId === currentCatId) {
+            icon.classList.add('selected');
+        } else {
+            icon.classList.remove('selected');
         }
-        messageHtml += `<div class="message-content">`;
-        if (text) {
-            messageHtml += `<div class="message-text">${text}</div>`;
-        }
-        if (imageUrl) {
-            messageHtml += `<img src="${imageUrl}" alt="チャット画像">`;
-        }
-        messageHtml += `</div>`;
-        messageWrapper.innerHTML = messageHtml;
-        chatLog.appendChild(messageWrapper);
-        chatLog.scrollTop = chatLog.scrollHeight;
+    });
+}
+
+/**
+ * メッセージフォーム送信時の処理
+ * @param {Event} e - イベントオブジェクト
+ */
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    const userMessage = messageInput.value.trim();
+
+    if (userMessage && currentCatId && !isWaitingForResponse) {
+        messageInput.value = '';
+        addMessage('user', userMessage);
+        
+        // AIからの応答を待つ
+        await getAiResponse(userMessage);
     }
+}
 
-    // --- 【本物のAI応答】サーバーと通信する関数 ---
-    async function getAiReply(userMessage) {
-        sendButton.disabled = true;
-        const typingIndicator = document.createElement('div');
-        typingIndicator.classList.add('message', 'ai-message', 'typing');
-        typingIndicator.innerHTML = `<img src="${selectedCat.profileImage}" alt="avatar" class="avatar"><div class="message-content">...</div>`;
-        chatLog.appendChild(typingIndicator);
-        chatLog.scrollTop = chatLog.scrollHeight;
+/**
+ * AIからの応答を取得して表示する
+ * @param {string} userMessage - ユーザーからのメッセージ
+ */
+async function getAiResponse(userMessage) {
+    toggleLoading(true);
 
-        // ▼▼▼▼▼ 通信先を相対パスに修正 ▼▼▼▼▼
-        const serverUrl = '/chat';
-        // ▲▲▲▲▲ ここまで ▲▲▲▲▲
-
-        try {
-            const requestData = {
-                catId: selectedCat.id,
+    try {
+        const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                catId: currentCatId,
                 question: userMessage,
-                history: conversationHistory
-            };
-            const response = await fetch(serverUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData),
-            });
-            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-            const data = await response.json();
-            let aiReply = data.reply;
-            conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
-            conversationHistory.push({ role: 'model', parts: [{ text: aiReply }] });
-            const imageRegex = /\[IMAGE:\s*([^\]]+)\]/g;
-            const match = imageRegex.exec(aiReply);
-            let imageUrl = null;
-            if (match) {
-                aiReply = aiReply.replace(imageRegex, '').trim();
-                imageUrl = match[1].trim();
-            }
-            displayMessage(aiReply, 'ai', imageUrl);
-        } catch (error) {
-            console.error('AIからの応答取得中にエラー:', error);
-            displayMessage('ごめんにゃ、ちょっと調子が悪いみたいだにゃん…', 'ai');
-        } finally {
-            chatLog.removeChild(typingIndicator);
-            sendButton.disabled = false;
-            messageInput.focus();
-        }
-    }
+                history: chatHistory
+            }),
+        });
 
-    // --- 実行 ---
-    initialize();
-});
+        if (!response.ok) {
+            throw new Error(`サーバーエラー: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const aiReply = data.reply;
+
+        // 応答をチャットログに追加
+        addMessage('ai', aiReply);
+
+        // 会話履歴を更新
+        chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+        chatHistory.push({ role: "model", parts: [{ text: aiReply }] });
+
+    } catch (error) {
+        console.error('AI応答の取得中にエラー:', error);
+        addMessage('system', 'ごめんなさい、AIとの通信に失敗しました。');
+    } finally {
+        toggleLoading(false);
+    }
+}
+
+
+/**
+ * チャットログにメッセージを追加する
+ * @param {string} sender - 送信者 ('user', 'ai', 'system')
+ * @param {string} text - メッセージテキスト
+ */
+function addMessage(sender, text) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message', `${sender}-message`);
+
+    // 画像トリガー `[IMAGE: path]` をHTMLの `<img>` タグに変換
+    const processedText = text.replace(/\[IMAGE: (.*?)\]/g, (match, imagePath) => {
+        return `<img src="${imagePath.trim()}" alt="猫からの画像" class="chat-image">`;
+    });
+
+    // テキスト内の改行を<br>に変換してHTMLに設定
+    messageElement.innerHTML = processedText.replace(/\n/g, '<br>');
+    
+    chatLog.appendChild(messageElement);
+    chatLog.scrollTop = chatLog.scrollHeight; // 自動で一番下にスクロール
+}
+
+/**
+ * AI応答中のローディング状態を切り替える
+ * @param {boolean} isLoading - ローディング中かどうか
+ */
+function toggleLoading(isLoading) {
+    isWaitingForResponse = isLoading;
+    if (isLoading) {
+        sendButton.disabled = true;
+        sendButton.textContent = '...';
+        // ローディングインジケーターを追加
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.id = 'loading';
+        loadingIndicator.className = 'message ai-message';
+        loadingIndicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+        chatLog.appendChild(loadingIndicator);
+        chatLog.scrollTop = chatLog.scrollHeight;
+    } else {
+        // ローディングインジケーターを削除
+        const loadingIndicator = document.getElementById('loading');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+        sendButton.disabled = false;
+        sendButton.textContent = '送信';
+        messageInput.focus();
+    }
+}
