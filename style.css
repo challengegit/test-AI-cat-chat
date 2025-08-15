@@ -1,215 +1,258 @@
-
-/* 基本スタイルとスマホ用スタイル */
+/* 基本的なスタイル */
 :root {
-    --primary-color: #f0f8ff; /* AliceBlue */
-    --secondary-color: #ffffff;
-    --accent-color: #ffc107; /* Orange */
-    --user-bubble-color: #dcf8c6; /* Light green */
-    --ai-bubble-color: #ffffff;
+    --primary-bg-color: #f0f4f8;
+    --secondary-bg-color: #ffffff;
+    --accent-color: #4a90e2;
+    --accent-hover-color: #357abd;
     --text-color: #333333;
-    --border-color: #dddddd;
+    --light-text-color: #888888;
+    --border-color: #e0e0e0;
+    --user-message-bg: #dcf8c6;
+    --ai-message-bg: #ffffff;
+    --system-message-bg: #e1e1e1;
 }
 
-body {
+body, html {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background-color: var(--primary-color);
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans CJK JP', sans-serif;
+    background-color: var(--primary-bg-color);
     color: var(--text-color);
-    -webkit-tap-highlight-color: transparent; /* スマホのタップ時のハイライトを無効化 */
+    height: 100%;
+    overflow: hidden;
 }
 
 .container {
     display: flex;
-    flex-direction: column;
     height: 100vh;
 }
 
-/* スマホ用 猫選択ヘッダー */
-.cat-header-sp {
-    padding: 10px;
-    background-color: var(--secondary-color);
-    border-bottom: 1px solid var(--border-color);
-    text-align: center;
+/* PC用サイドバー */
+.cat-sidebar-pc {
+    width: 280px;
+    background-color: var(--secondary-bg-color);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    display: none; /* スマホでは非表示 */
 }
-.cat-header-sp p {
-    margin: 0 0 10px 0;
-    font-size: 0.9em;
-    color: #555;
+.cat-sidebar-pc h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: var(--accent-color);
 }
-.cat-list-sp {
+.cat-list-pc {
+    margin-top: 20px;
+}
+.cat-item {
     display: flex;
-    justify-content: space-around;
-    gap: 10px;
-}
-.cat-icon-sp {
-    text-align: center;
-    cursor: pointer;
-    border: 2px solid transparent;
-    padding: 5px;
+    align-items: center;
+    padding: 10px;
     border-radius: 8px;
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 10px;
 }
-.cat-icon-sp img {
+.cat-item:hover {
+    background-color: var(--primary-bg-color);
+}
+.cat-item.selected {
+    background-color: #e3effd;
+}
+.cat-profile-img {
     width: 50px;
     height: 50px;
     border-radius: 50%;
     object-fit: cover;
+    margin-right: 15px;
 }
-.cat-icon-sp span {
-    display: block;
-    font-size: 0.8em;
+.cat-info .cat-name {
+    font-weight: bold;
+    margin: 0;
+}
+.cat-info .cat-description {
+    font-size: 0.8rem;
+    color: var(--light-text-color);
+    margin: 4px 0 0;
+}
+
+/* スマホ用ヘッダー */
+.cat-header-sp {
+    display: none; /* PCでは非表示 */
+    background-color: var(--secondary-bg-color);
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+}
+.cat-header-sp p {
+    margin: 0 0 10px;
+    font-size: 0.8rem;
+    color: var(--light-text-color);
+}
+.cat-list-sp {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+.cat-icon-sp {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.2s;
 }
 .cat-icon-sp.selected {
-    background-color: var(--accent-color);
+    border-color: var(--accent-color);
 }
 
-/* PC用 猫紹介サイドバー (初期状態では非表示) */
-.cat-sidebar-pc {
-    display: none;
-}
 
-/* メインチャット画面 */
+/* チャットコンテナ */
 .chat-container {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    height: 100vh; /* スマホ表示用にvh指定 */
 }
 
+/* チャットログ */
 .chat-log {
     flex-grow: 1;
-    padding: 15px;
+    padding: 20px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
 }
 
 .message {
-    max-width: 80%;
+    max-width: 70%;
     padding: 10px 15px;
     border-radius: 18px;
     margin-bottom: 10px;
-    line-height: 1.4;
-    word-wrap: break-word;
+    line-height: 1.5;
 }
-.message-content img {
-    max-width: 100%;
-    border-radius: 10px;
-    margin-top: 5px;
-}
-.message-text {
-    white-space: pre-wrap;
-}
-
 .user-message {
-    background-color: var(--user-bubble-color);
+    background-color: var(--user-message-bg);
     align-self: flex-end;
     border-bottom-right-radius: 4px;
 }
-
 .ai-message {
-    background-color: var(--ai-bubble-color);
+    background-color: var(--ai-message-bg);
     align-self: flex-start;
-    border: 1px solid var(--border-color);
     border-bottom-left-radius: 4px;
-    display: flex;
-    gap: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
-.ai-message .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
 .system-message {
-    text-align: center;
-    align-self: center;
-    background-color: #e0e0e0;
+    background-color: var(--system-message-bg);
     color: #555;
-    font-size: 0.9em;
-    border-radius: 10px;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 12px;
+    align-self: center;
 }
 
-/* チャット入力フッター */
+/* チャットフッター */
 .chat-footer {
-    padding: 10px;
-    background-color: #f5f5f5;
+    padding: 15px 20px;
+    background-color: var(--secondary-bg-color);
     border-top: 1px solid var(--border-color);
 }
 .chat-form {
     display: flex;
+    gap: 10px;
 }
 #message-input {
     flex-grow: 1;
+    padding: 10px 15px;
     border: 1px solid var(--border-color);
     border-radius: 20px;
-    padding: 10px 15px;
-    font-size: 1em;
+    font-size: 1rem;
 }
-#message-input:disabled {
-    background-color: #eeeeee;
+#message-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
 }
 #send-button {
-    border: none;
-    background-color: #007bff;
-    color: white;
     padding: 10px 20px;
+    border: none;
+    background-color: var(--accent-color);
+    color: white;
     border-radius: 20px;
-    margin-left: 10px;
+    font-size: 1rem;
     cursor: pointer;
-    font-size: 1em;
+    transition: background-color 0.2s;
+}
+#send-button:hover:not(:disabled) {
+    background-color: var(--accent-hover-color);
 }
 #send-button:disabled {
-    background-color: #a0c7ff;
+    background-color: #a0c7ef;
     cursor: not-allowed;
 }
 
-/* PC用スタイル (画面幅が768px以上の場合) */
-@media (min-width: 768px) {
-    .container {
-        flex-direction: row;
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .cat-sidebar-pc {
+        display: none;
     }
     .cat-header-sp {
-        display: none; /* スマホ用ヘッダーは非表示 */
+        display: block;
     }
+    .container {
+        flex-direction: column;
+    }
+    .chat-container {
+        height: auto; /* vh指定を解除 */
+    }
+}
+@media (min-width: 769px) {
     .cat-sidebar-pc {
-        display: block; /* PC用サイドバーを表示 */
-        width: 300px;
-        flex-shrink: 0;
-        background-color: var(--secondary-color);
-        border-right: 1px solid var(--border-color);
-        padding: 20px;
-        overflow-y: auto;
+        display: block;
     }
-    .cat-list-pc .cat-item {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        border: 2px solid transparent;
+}
+
+
+/* ===== ここから下が重要 ===== */
+
+/* AI応答中のタイピングインジケーター */
+.typing-indicator {
+    display: flex;
+    padding: 10px;
+}
+.typing-indicator span {
+    height: 8px;
+    width: 8px;
+    background-color: #9E9E9E;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 2px;
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-of-type(1) {
+    animation-delay: -0.32s;
+}
+.typing-indicator span:nth-of-type(2) {
+    animation-delay: -0.16s;
+}
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    } 40% {
+        transform: scale(1.0);
     }
-    .cat-list-pc .cat-item:hover {
-        background-color: #f0f0f0;
-    }
-    .cat-list-pc .cat-item.selected {
-        background-color: var(--accent-color);
-    }
-    .cat-list-pc .cat-item img {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        margin-right: 15px;
-        object-fit: cover;
-    }
-    .cat-list-pc .info .name {
-        font-weight: bold;
-    }
-    .cat-list-pc .info .details {
-        font-size: 0.9em;
-        color: #555;
-    }
+}
+
+/* チャットで表示される画像 */
+.chat-image {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+.chat-image:hover {
+    transform: scale(1.05);
 }

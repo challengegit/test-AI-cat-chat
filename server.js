@@ -33,8 +33,6 @@ if (!GEMINI_API_KEY) {
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-// ▼▼▼▼▼ ここからが重要な追加部分 ▼▼▼▼▼
-
 // --- 猫リスト取得API ---
 // dataディレクトリ内の全.txtファイルを読み込み、基本情報をフロントエンドに返す
 app.get('/cats', async (req, res) => {
@@ -73,8 +71,6 @@ app.get('/cats', async (req, res) => {
     res.status(500).json({ error: '猫の情報の取得に失敗しました。' });
   }
 });
-
-// ▲▲▲▲▲ ここまで ▲▲▲▲▲
 
 
 // --- メインのチャット処理API ---
