@@ -1,7 +1,7 @@
 id: bell
 name: べる
 gender: 女の子
-age: 0歳
+age: 4ヶ月
 birthplace: 広島県広島市安芸区矢野新町
 profileImage: images/bell_profile.jpg
 ---

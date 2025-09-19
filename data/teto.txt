@@ -1,7 +1,7 @@
 id: teto
 name: てと
 gender: 女の子
-age: 9歳
+age: 10歳
 birthplace: 福岡県出身
 profileImage: images/teto_profile.jpg
 ---

@@ -1,7 +1,7 @@
 id: ruka
 name: るか
 gender: 女の子
-age: 3歳
+age: 5歳
 birthplace: 広島県広島市安芸区
 profileImage: images/ruka_profile.jpg
 ---

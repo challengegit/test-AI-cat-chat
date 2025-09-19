@@ -1,7 +1,7 @@
 id: rate
 name: らて
 gender: 男の子
-age: 0歳
+age: 1歳
 birthplace: 広島県の造船所
 profileImage: images/rate_profile.jpg
 ---
