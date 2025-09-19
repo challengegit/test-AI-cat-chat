@@ -20,5 +20,5 @@ profileImage: images/bell_profile.jpg
 ---
 ## 画像トリガー
 ご主人の、足にじゃれつく「べる」
-[IMAGE: images/abi.jpg]
+[IMAGE: images/bell.jpg]
 
