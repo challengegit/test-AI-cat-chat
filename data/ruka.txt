@@ -56,8 +56,7 @@ profileImage: images/ruka_profile.jpg
 るかも仔猫時代はスマートだったにゃ
 [IMAGE: images/ruka_kitten.jpg]
 
-# るかの仔猫時代の写真
-P座りしている「るか」
+# お座りしている「るか」
 [IMAGE: images/ruka.jpg]
 
 # 指示
