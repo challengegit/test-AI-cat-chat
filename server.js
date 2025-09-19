@@ -80,12 +80,45 @@ app.post('/chat', async (req, res) => {
     if (!catId || !question) {
       return res.status(400).json({ error: '猫のIDと質問は必須です。' });
     }
+
+    // --- ★★★ ここからが修正箇所です ★★★ ---
+
+    // Step 1: 全猫の基本情報を背景知識として生成
+    const dataDir = path.join(__dirname, 'data');
+    const allCatFiles = await fs.readdir(dataDir);
+    const catTxtFiles = allCatFiles.filter(file => file.endsWith('.txt'));
+
+    let allCatsKnowledge = "あなたは、以下の猫たちと一緒に暮らしています。他の猫について質問された場合は、この情報を基に、あなた自身のキャラクターとして自然な口調で答えてください。\n\n";
+    
+    const order = ['pino', 'teto', 'ruka', 'abi', 'bell', 'rate'];
+    const sortedCatFiles = catTxtFiles.sort((a, b) => order.indexOf(path.parse(a).name) - order.indexOf(path.parse(b).name));
+
+    for (const file of sortedCatFiles) {
+      const content = await fs.readFile(path.join(dataDir, file), 'utf-8');
+      const profileInfo = {};
+      const lines = content.split('---')[0].split('\n');
+      lines.forEach(line => {
+        const [key, ...value] = line.split(':');
+        if (key && value.length > 0) {
+          profileInfo[key.trim()] = value.join(':').trim();
+        }
+      });
+      // AIに与えるための簡潔な情報リストを作成
+      allCatsKnowledge += `- 名前: ${profileInfo.name}, 性別: ${profileInfo.gender}, 年齢: ${profileInfo.age}\n`;
+    }
+
+    // Step 2: 選択された猫のペルソナプロンプトを読み込む
     const catProfilePath = path.join(__dirname, 'data', `${catId}.txt`);
     const profileText = await fs.readFile(catProfilePath, 'utf-8');
     const parts = profileText.split('---');
-    const systemPrompt = parts[1]?.trim() || '';
-    const imageTriggerPrompt = parts[2]?.trim() || '';
-    const fullPrompt = `${systemPrompt}\n\nあなたは以上の設定に完璧になりきってください。\nさらに、以下のルールにも従ってください。\n${imageTriggerPrompt}\n\n以上の設定とルールに基づき、ユーザーからの以下の質問に答えてください。`;
+    const systemPrompt = parts[1]?.trim() || ''; // あなたの基本設定
+    const imageTriggerPrompt = parts[2]?.trim() || ''; // 画像トリガー
+
+    // Step 3: 背景知識とペルソナを結合して最終的なプロンプトを作成
+    const fullPrompt = `${allCatsKnowledge}\n---\n\n${systemPrompt}\n\nあなたは以上の設定に完璧になりきってください。\nさらに、以下のルールにも従ってください。\n${imageTriggerPrompt}\n\n以上の設定とルールに基づき、ユーザーからの以下の質問に答えてください。`;
+    
+    // --- ★★★ 修正箇所はここまでです ★★★ ---
+
     const chat = model.startChat({
       history: history || [],
       generationConfig: { maxOutputTokens: 1000 },
@@ -93,6 +126,7 @@ app.post('/chat', async (req, res) => {
     const result = await chat.sendMessage(fullPrompt + "\n\n質問: " + question);
     const aiReplyText = result.response.text();
     res.json({ reply: aiReplyText });
+    
   } catch (error) {
     console.error('チャット処理中にエラーが発生しました:', error);
     res.status(500).json({ error: 'AIとの通信中にエラーが発生しました。' });
